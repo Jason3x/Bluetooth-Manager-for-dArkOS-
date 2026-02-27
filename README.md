@@ -1,5 +1,4 @@
-# R36S Bluetooth Manager  
-### dArkOs Edition
+# R36S Bluetooth Manager dArkOs Edition
 
 ![Platform](https://img.shields.io/badge/Platform-R36S-blue)
 ![OS](https://img.shields.io/badge/OS-dArkOs-green)
