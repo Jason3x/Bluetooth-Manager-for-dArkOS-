@@ -39,7 +39,6 @@ Designed for stability, automatic configuration, and seamless audio integration.
 
 - [Realtek firmware ](https://github.com/Jason3x/Realtek-for-ArkOs-and-dArkOS-) (No need arkos AeUX, arkos4clone and dArkOS RE) 
 - Internet connection (first-time install only)
-- Put **sysdefault** settings in audio card and **pcm** in audio device
 
 ---
 
