@@ -589,38 +589,55 @@ PA_CMD="pactl --server=unix:/var/run/pulse/native"
 LOCK="/tmp/vol_busy"
 rm -f "$LOCK"
 
+# Attente que l'audio soit prêt
 until [ -S /var/run/pulse/native ] && $PA_CMD stat >/dev/null 2>&1; do
     sleep 0.5
 done
-    
-    
 
+# Détection des touches
 EV_PATH="/dev/input/event3"
 [ ! -e "$EV_PATH" ] && EV_PATH="/dev/input/$(grep -E 'Handlers|Name' /proc/bus/input/devices | grep -A1 "odroidgo3-keys" | grep -oE 'event[0-9]+' | head -n1)"
 
 stdbuf -oL evtest "$EV_PATH" | while read line; do
+ 
     if [[ "$line" == *"value 0"* ]]; then
         rm -f "$LOCK"
         continue
     fi
 
     if [[ "$line" == *"KEY_VOLUME"* ]]; then
+        # On récupère le volume actuel
+        CUR_VOL=$($PA_CMD list sinks | grep 'Volume:' | head -n 1 | sed -e 's,.* \([0-9][0-9]*\)%.*,\1,')
+        
+        # On détermine la direction
         [[ "$line" == *"KEY_VOLUMEUP"* ]] && DIR="+" || DIR="-"
 
-        # Appui simple sur le bouton
+        # Sécurité pour ne pas dépasser 0-100%
+        if [[ "$DIR" == "+" && "$CUR_VOL" -ge 100 ]]; then
+            $PA_CMD set-sink-volume @DEFAULT_SINK@ 100%
+            continue
+        fi
+        if [[ "$DIR" == "-" && "$CUR_VOL" -le 0 ]]; then
+            $PA_CMD set-sink-volume @DEFAULT_SINK@ 0%
+            continue
+        fi
+
+        # Gestion de la vitesse selon le type d'appui
         if [[ "$line" == *"value 1"* ]]; then
-            $PA_CMD set-sink-volume @DEFAULT_SINK@ ${DIR}1%
-            amixer -q sset Master 0.5%${DIR} 2>/dev/null
+            # Appui simple
+            STEP="2%"
+            $PA_CMD set-sink-volume @DEFAULT_SINK@ ${DIR}${STEP}
+            amixer -q sset Master ${STEP}${DIR} 2>/dev/null
             
-        # Maintien de la touche
         elif [[ "$line" == *"value 2"* ]]; then
+            # Appui prolongé
             if [ ! -f "$LOCK" ]; then
                 touch "$LOCK"
-    
-                $PA_CMD set-sink-volume @DEFAULT_SINK@ ${DIR}2%
-                amixer -q sset Master 2%${DIR} 2>/dev/null
-    
-                (sleep 0.05; rm -f "$LOCK") &
+                STEP="2%"
+                $PA_CMD set-sink-volume @DEFAULT_SINK@ ${DIR}${STEP}
+                amixer -q sset Master ${STEP}${DIR} 2>/dev/null
+                
+                (sleep 0.07; rm -f "$LOCK") &
             fi
         fi
     fi
@@ -650,8 +667,8 @@ load-module module-device-restore
 load-module module-stream-restore
 load-module module-card-restore
 load-module module-augment-properties
-load-module module-alsa-sink device=default sink_name=internal_speaker
 load-module module-udev-detect
+load-module module-alsa-sink device=default sink_name=internal_speaker
 load-module module-native-protocol-unix auth-anonymous=1
 load-module module-rescue-streams
 load-module module-always-sink
@@ -741,29 +758,32 @@ EOF
 ApplyAudioFix() {
     local PA_CMD="pactl --server=unix:/var/run/pulse/native"
     
-    $PA_CMD load-module module-switch-on-connect >/dev/null 2>&1 || true
-    
-    sleep 0.5
-    
-    # Cherche le Sink Bluetooth
+    sleep 2
+
+    # On cherche si un sink Bluetooth est présent
     local BT_SINK=$($PA_CMD list short sinks | grep "bluez_sink" | awk '{print $2}')
-    
-    # Cherche le Sink Interne 
-    local INTERNAL_SINK=$($PA_CMD list short sinks | grep "alsa_output" | grep -v "bluez" | awk '{print $2}' | head -n 1)
 
     if [ -n "$BT_SINK" ]; then
-        # On passe sur le Bluetooth
-        $PA_CMD set-default-sink "$BT_SINK" >/dev/null 2>&1
-        $PA_CMD set-sink-volume "$BT_SINK" 80% >/dev/null 2>&1
-        
+        # On définit le Bluetooth comme sortie par défaut
+        $PA_CMD set-default-sink "$BT_SINK" 70% >/dev/null 2>&1
+
         local CARD=$($PA_CMD list short cards | grep "bluez_card" | awk '{print $2}')
-        [ -n "$CARD" ] && $PA_CMD set-card-profile "$CARD" a2dp_sink >/dev/null 2>&1
-    elif [ -n "$INTERNAL_SINK" ]; then
-        # On revient sur le son interne
-        $PA_CMD set-default-sink "$INTERNAL_SINK" >/dev/null 2>&1
-        # On s'assure que le son n'est pas muet
-        $PA_CMD set-sink-mute "$INTERNAL_SINK" 0 >/dev/null 2>&1
+        if [ -n "$CARD" ]; then
+            $PA_CMD set-card-profile "$CARD" a2dp_sink >/dev/null 2>&1
+        fi
+
+        $PA_CMD set-sink-volume "$BT_SINK" 70% >/dev/null 2>&1
+    else
+        # On force le retour sur les HP internes
+        $PA_CMD set-default-sink internal_speaker >/dev/null 2>&1
+        $PA_CMD set-sink-mute internal_speaker 0 >/dev/null 2>&1
     fi
+
+    # On déplace tous les flux audio en cours vers la nouvelle sortie
+    local DEFAULT_SINK=$($PA_CMD info | grep "Default Sink" | awk '{print $3}')
+    for stream in $($PA_CMD list short sink-inputs | awk '{print $1}'); do
+        $PA_CMD move-sink-input "$stream" "$DEFAULT_SINK" >/dev/null 2>&1
+    done
 }
 
 # --- Permission des groupes ---
