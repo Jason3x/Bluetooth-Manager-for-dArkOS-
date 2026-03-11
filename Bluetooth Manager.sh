@@ -581,6 +581,7 @@ CheckDeps() {
 }
 
 # --- Configuration du volume ---
+# --- Configuration du volume (Version Corrigée) ---
 FixVolumeScript() {
     cat <<'EOF' | sudo tee /usr/local/bin/bt-volume-monitor.sh > /dev/null
 #!/bin/bash
@@ -591,7 +592,7 @@ rm -f "$LOCK"
 
 # Attente que l'audio soit prêt
 until [ -S /var/run/pulse/native ] && $PA_CMD stat >/dev/null 2>&1; do
-    sleep 0.5
+    sleep 1
 done
 
 # Détection des touches
@@ -599,47 +600,26 @@ EV_PATH="/dev/input/event3"
 [ ! -e "$EV_PATH" ] && EV_PATH="/dev/input/$(grep -E 'Handlers|Name' /proc/bus/input/devices | grep -A1 "odroidgo3-keys" | grep -oE 'event[0-9]+' | head -n1)"
 
 stdbuf -oL evtest "$EV_PATH" | while read line; do
- 
+
     if [[ "$line" == *"value 0"* ]]; then
         rm -f "$LOCK"
         continue
     fi
 
     if [[ "$line" == *"KEY_VOLUME"* ]]; then
-        # On récupère le volume actuel
-        CUR_VOL=$($PA_CMD list sinks | grep 'Volume:' | head -n 1 | sed -e 's,.* \([0-9][0-9]*\)%.*,\1,')
-        
+    
+        if [ -f "$LOCK" ]; then
+            continue
+        fi
+
+        touch "$LOCK"
+
         # On détermine la direction
-        [[ "$line" == *"KEY_VOLUMEUP"* ]] && DIR="+" || DIR="-"
+        [[ "$line" == *"KEY_VOLUMEUP"* ]] && DIR="+1%" || DIR="-1%"
 
-        # Sécurité pour ne pas dépasser 0-100%
-        if [[ "$DIR" == "+" && "$CUR_VOL" -ge 100 ]]; then
-            $PA_CMD set-sink-volume @DEFAULT_SINK@ 100%
-            continue
-        fi
-        if [[ "$DIR" == "-" && "$CUR_VOL" -le 0 ]]; then
-            $PA_CMD set-sink-volume @DEFAULT_SINK@ 0%
-            continue
-        fi
+        $PA_CMD set-sink-volume @DEFAULT_SINK@ $DIR > /dev/null 2>&1
 
-        # Gestion de la vitesse selon le type d'appui
-        if [[ "$line" == *"value 1"* ]]; then
-            # Appui simple
-            STEP="2%"
-            $PA_CMD set-sink-volume @DEFAULT_SINK@ ${DIR}${STEP}
-            amixer -q sset Master ${STEP}${DIR} 2>/dev/null
-            
-        elif [[ "$line" == *"value 2"* ]]; then
-            # Appui prolongé
-            if [ ! -f "$LOCK" ]; then
-                touch "$LOCK"
-                STEP="2%"
-                $PA_CMD set-sink-volume @DEFAULT_SINK@ ${DIR}${STEP}
-                amixer -q sset Master ${STEP}${DIR} 2>/dev/null
-                
-                (sleep 0.07; rm -f "$LOCK") &
-            fi
-        fi
+        (sleep 0.1; rm -f "$LOCK") &
     fi
 done
 EOF
@@ -765,14 +745,14 @@ ApplyAudioFix() {
 
     if [ -n "$BT_SINK" ]; then
         # On définit le Bluetooth comme sortie par défaut
-        $PA_CMD set-default-sink "$BT_SINK" 70% >/dev/null 2>&1
+        $PA_CMD set-default-sink "$BT_SINK" 10% >/dev/null 2>&1
 
         local CARD=$($PA_CMD list short cards | grep "bluez_card" | awk '{print $2}')
         if [ -n "$CARD" ]; then
             $PA_CMD set-card-profile "$CARD" a2dp_sink >/dev/null 2>&1
         fi
 
-        $PA_CMD set-sink-volume "$BT_SINK" 70% >/dev/null 2>&1
+        $PA_CMD set-sink-volume "$BT_SINK" 10% >/dev/null 2>&1
     else
         # On force le retour sur les HP internes
         $PA_CMD set-default-sink internal_speaker >/dev/null 2>&1
