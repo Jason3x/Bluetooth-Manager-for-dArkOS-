@@ -581,7 +581,6 @@ CheckDeps() {
 }
 
 # --- Configuration du volume ---
-# --- Configuration du volume (Version Corrigée) ---
 FixVolumeScript() {
     cat <<'EOF' | sudo tee /usr/local/bin/bt-volume-monitor.sh > /dev/null
 #!/bin/bash
@@ -619,7 +618,7 @@ stdbuf -oL evtest "$EV_PATH" | while read line; do
 
         $PA_CMD set-sink-volume @DEFAULT_SINK@ $DIR > /dev/null 2>&1
 
-        (sleep 0.1; rm -f "$LOCK") &
+        (sleep 0.07; rm -f "$LOCK") &
     fi
 done
 EOF
@@ -745,14 +744,14 @@ ApplyAudioFix() {
 
     if [ -n "$BT_SINK" ]; then
         # On définit le Bluetooth comme sortie par défaut
-        $PA_CMD set-default-sink "$BT_SINK" 10% >/dev/null 2>&1
+        $PA_CMD set-default-sink "$BT_SINK" 25% >/dev/null 2>&1
 
         local CARD=$($PA_CMD list short cards | grep "bluez_card" | awk '{print $2}')
         if [ -n "$CARD" ]; then
             $PA_CMD set-card-profile "$CARD" a2dp_sink >/dev/null 2>&1
         fi
 
-        $PA_CMD set-sink-volume "$BT_SINK" 10% >/dev/null 2>&1
+        $PA_CMD set-sink-volume "$BT_SINK" 25% >/dev/null 2>&1
     else
         # On force le retour sur les HP internes
         $PA_CMD set-default-sink internal_speaker >/dev/null 2>&1
@@ -793,7 +792,7 @@ ForceInternalAudio() {
     $PA_CMD set-default-sink internal_speaker >/dev/null 2>&1
 
     $PA_CMD set-sink-mute internal_speaker 0 >/dev/null 2>&1
-    $PA_CMD set-sink-volume internal_speaker 75% >/dev/null 2>&1
+    $PA_CMD set-sink-volume internal_speaker 25% >/dev/null 2>&1
     
     # On déplace les sons en cours vers le haut-parleur
     for stream in $($PA_CMD list short sink-inputs | awk '{print $1}'); do
