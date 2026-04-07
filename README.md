@@ -5,8 +5,9 @@
 ![Shell](https://img.shields.io/badge/Bash-Script-yellow)
 ![License](https://img.shields.io/badge/License-Free-lightgrey)
 
-A complete Bluetooth management solution for the **R36XS running dArkOs**.  
+A complete Bluetooth management solution for the **R36XS running on Arkos & dArkOs**.  
 Designed for stability, automatic configuration, and seamless audio integration.
+
 Thank's to **djparent** for fix many problem
 
 ---
