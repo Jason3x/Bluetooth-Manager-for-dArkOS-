@@ -1,4 +1,4 @@
-# R36S Bluetooth Manager dArkOs Edition
+# R36S Bluetooth Manager
 
 ![Platform](https://img.shields.io/badge/Platform-R36S-blue)
 ![OS](https://img.shields.io/badge/OS-dArkOs-green)
@@ -7,6 +7,7 @@
 
 A complete Bluetooth management solution for the **R36XS running dArkOs**.  
 Designed for stability, automatic configuration, and seamless audio integration.
+Thank's to **djparent** for fix many problem
 
 ---
 
