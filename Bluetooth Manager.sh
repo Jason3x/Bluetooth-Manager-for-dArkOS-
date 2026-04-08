@@ -39,17 +39,17 @@ fi
 # -------------------------------------------------------
 # Variables
 # -------------------------------------------------------
-ARK_UID=$(id -u ark)
-PULSE_SOCKET="/run/user/${ARK_UID}/pulse/native"
 SYSTEM_LANG=""
+GPTOKEYB_PID=""
 CURR_TTY="/dev/tty1"
-SCRIPT_DIR="$(dirname "$(realpath "$0")")"
-ES_CONF="/home/ark/.emulationstation/es_settings.cfg"
-INSTALLED_FLAG="/home/ark/.bt_manager_installed"
+ARK_UID=$(id -u ark)
+SCRIPT_NAME="$(basename "$0")"
 ASOUNDRC="/home/ark/.asoundrc"
 ASOUNDRC_BAK="/home/ark/.asoundrcbak"
-SCRIPT_NAME="$(basename "$0")"
-GPTOKEYB_PID=""
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+PULSE_SOCKET="/run/user/${ARK_UID}/pulse/native"
+INSTALLED_FLAG="/home/ark/.bt_manager_installed"
+ES_CONF="/home/ark/.emulationstation/es_settings.cfg"
 
 # -------------------------------------------------------
 # Initialization
@@ -61,7 +61,6 @@ chmod 700 /run/user/${ARK_UID}
 export XDG_RUNTIME_DIR=/run/user/${ARK_UID}
 export PULSE_SERVER=unix:$XDG_RUNTIME_DIR/pulse/native
 export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
-export TERM=linux
 
 if [ -f "$ES_CONF" ]; then
     ES_DETECTED=$(grep "name=\"Language\"" "$ES_CONF" | grep -o 'value="[^"]*"' | cut -d '"' -f 2)
@@ -70,7 +69,7 @@ fi
 # -------------------------------------------------------
 # Default configuration : EN
 # -------------------------------------------------------
-T_BACKTITLE="Bluetooth Manager by Jason & djparent "
+T_BACKTITLE="Bluetooth Manager by Jason & djparent"
 T_STARTING="Starting Bluetooth Manager ...\nPlease wait."
 T_ERR_TITLE="Error"
 T_STOPPING="Stopping Bluetooth..."
@@ -174,7 +173,7 @@ T_RESCAN="Rescan"
 
 # --- FRANÇAIS (FR) --- 
 if [[ "$SYSTEM_LANG" == *"fr"* ]]; then
-T_BACKTITLE="Bluetooth Manager par Jason & djparent "
+T_BACKTITLE="Bluetooth Manager par djparent"
 T_STARTING="Demarrage du Bluetooth Manager ...\nVeuillez patienter."
 T_ERR_TITLE="Erreur"
 T_STOPPING="Arret du Bluetooth..."
@@ -277,7 +276,7 @@ T_RESCAN="Relancer"
 
 # --- ESPAÑOL (ES) ---
 elif [[ "$SYSTEM_LANG" == *"es"* ]]; then
-T_BACKTITLE="Bluetooth Manager por Jason & djparent "
+T_BACKTITLE="Bluetooth Manager por djparent"
 T_STARTING="Iniciando Bluetooth Manager ...\nPor favor espere."
 T_ERR_TITLE="Error"
 T_STOPPING="Deteniendo Bluetooth..."
@@ -380,7 +379,7 @@ T_RESCAN="Reescanear"
 
 # --- PORTUGUÊS (PT) ---
 elif [[ "$SYSTEM_LANG" == *"pt"* ]]; then
-T_BACKTITLE="Bluetooth Manager por Jason & djparent "
+T_BACKTITLE="Bluetooth Manager por djparent"
 T_STARTING="Iniciando Bluetooth Manager ...\nPor favor aguarde."
 T_ERR_TITLE="Erro"
 T_STOPPING="Parando Bluetooth..."
@@ -483,7 +482,7 @@ T_RESCAN="Reescanear"
 
 # --- ITALIANO (IT) ---
 elif [[ "$SYSTEM_LANG" == *"it"* ]]; then
-T_BACKTITLE="Bluetooth Manager di Jason & djparent "
+T_BACKTITLE="Bluetooth Manager di djparent"
 T_STARTING="Avvio di Bluetooth Manager ...\nAttendere prego."
 T_ERR_TITLE="Errore"
 T_STOPPING="Arresto Bluetooth..."
@@ -585,7 +584,7 @@ T_RESCAN="Ripeti scansione"
 
 # --- DEUTSCH (DE) ---
 elif [[ "$SYSTEM_LANG" == *"de"* ]]; then
-T_BACKTITLE="Bluetooth Manager von Jason & djparent "
+T_BACKTITLE="Bluetooth Manager von djparent"
 T_STARTING="Bluetooth Manager wird gestartet ...\nBitte warten."
 T_ERR_TITLE="Fehler"
 T_STOPPING="Bluetooth wird gestoppt..."
@@ -688,7 +687,7 @@ T_RESCAN="Erneut suchen"
 
 # --- POLSKI (PL) ---
 elif [[ "$SYSTEM_LANG" == *"pl"* ]]; then
-T_BACKTITLE="Bluetooth Manager przez Jason & djparent "
+T_BACKTITLE="Bluetooth Manager przez djparent"
 T_STARTING="Uruchamianie Bluetooth Manager ...\nProsze czekac."
 T_ERR_TITLE="Blad"
 T_STOPPING="Zatrzymywanie Bluetooth..."
@@ -814,6 +813,12 @@ StopGPTKeyb() {
 }
 
 # -------------------------------------------------------
+# Font Selection
+# -------------------------------------------------------
+ORIGINAL_FONT=$(setfont -v 2>&1 | grep -o '/.*\.psf.*')
+setfont /usr/share/consolefonts/Lat7-TerminusBold22x11.psf.gz
+
+# -------------------------------------------------------
 # Display Management
 # -------------------------------------------------------
 printf "\e[?25l" > "$CURR_TTY"
@@ -823,16 +828,6 @@ pgrep -f osk.py | xargs kill -9
 printf "\033[H\033[2J" > "$CURR_TTY"
 printf "$T_STARTING" > "$CURR_TTY"
 sleep 0.1
-
-# -------------------------------------------------------
-# Font Selection
-# -------------------------------------------------------
-ORIGINAL_FONT=$(setfont -v 2>&1 | grep -o '/.*\.psf.*')
-if [[ ! -e "/dev/input/by-path/platform-odroidgo2-joypad-event-joystick" ]]; then
-    setfont /usr/share/consolefonts/Lat7-TerminusBold22x11.psf.gz
-else
-    setfont /usr/share/consolefonts/Lat7-Terminus16.psf.gz
-fi
 
 # -------------------------------------------------------
 # Bluetooth Status
@@ -859,7 +854,7 @@ GetConnectedName() {
 }
 
 # -------------------------------------------------------
-# Route ALSA through PulseAudio (for BT audio)
+# Route ALSA through PulseAudio (for Bluetooth audio)
 # -------------------------------------------------------
 SetAsoundPulse() {
     cat <<ASOUND > "$ASOUNDRC"
@@ -2119,7 +2114,7 @@ MainMenu() {
 	6 "$T_MAIN_TITLE2" 2>&1 > "$CURR_TTY")
         [ $? -ne 0 ] && ExitMenu
     case $mainselection in
-        1) ToggleBT ;;
+        1) Toggle Bluetooth ;;
         2) ScanAndConnect ;;
         3) DisconnectProcess ;;
         4) ListKnownAndConnect ;;
